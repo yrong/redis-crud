@@ -10,7 +10,7 @@ bluebird.promisifyAll(Redis.Multi.prototype)
 let redis_config
 try{
     redis_config = config.get('redis')
-}catch{
+}catch(err){
     redis_config = {
         "host": "localhost",
         "port": 6379
