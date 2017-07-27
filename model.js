@@ -20,25 +20,25 @@ module.exports = function (redis, name) {
             }
 
             return Promise.resolve(before).then(() => {
-                // Get the incremental id for the record
-                return redis.incrAsync(NAME).then(id => {
-
-                    // Add the record
-                    return new Promise((resolve, reject) => {
-                        redis.set(KEY(id), JSON.stringify(obj),(err,res)=>{
-                            if (res === 'OK') {
+                return new Promise((resolve, reject) => {
+                    let id = obj.name
+                    if(id){
+                        redis.SETNX(KEY(id), JSON.stringify(obj),(err,res)=>{
+                            if (res) {
                                 // Run the afterInsert hook
                                 const after = this.afterInsert && this.afterInsert(obj, id);
                                 return Promise.resolve(after).then(() => {
                                     resolve(id);
                                 });
                             } else {
-                                reject(new Error(`Could not create object for ${name}. The server says ${res}`))
+                                reject(new Error(`Could not create object for ${name}. ${id} already exist`))
                             }
                         })
-                    })
+                    }else{
+                        reject(new Error(`missing name field`))
+                    }
 
-                });
+                })
             });
         },
 
@@ -63,6 +63,17 @@ module.exports = function (redis, name) {
                     }
                     Promise.all(promises).then(resolve).catch(reject)
                 });
+            })
+        },
+
+        deleteAll:function(){
+            return new Promise((resolve, reject) => {
+                redis.eval("return redis.call('del', unpack(redis.call('keys', ARGV[1])))", 0, KEY('*'), (err, res) => {
+                    if (err)
+                        reject(err)
+                    if (res)
+                        resolve(res)
+                })
             })
         },
 
