@@ -69,10 +69,7 @@ module.exports = function (redis, name) {
         deleteAll:function(){
             return new Promise((resolve, reject) => {
                 redis.eval("return redis.call('del', unpack(redis.call('keys', ARGV[1])))", 0, KEY('*'), (err, res) => {
-                    if (err)
-                        reject(err)
-                    if (res)
-                        resolve(res)
+                    resolve({})
                 })
             })
         },
@@ -129,7 +126,7 @@ module.exports = function (redis, name) {
             return redis.existsAsync(key).then(res => {
                 if (res === 0) {
                     // Record not found
-                    return null;
+                    return {};
                 }
 
                 return redis.getAsync(key).then((res)=>{
