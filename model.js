@@ -21,9 +21,9 @@ module.exports = function (redis, name) {
 
             return Promise.resolve(before).then(() => {
                 return new Promise((resolve, reject) => {
-                    let id = obj.name
+                    let id = obj.id||obj.name
                     if(id){
-                        redis.SETNX(KEY(id), JSON.stringify(obj),(err,res)=>{
+                        redis.set(KEY(id), JSON.stringify(obj),(err,res)=>{
                             if (res) {
                                 // Run the afterInsert hook
                                 const after = this.afterInsert && this.afterInsert(obj, id);
@@ -35,7 +35,7 @@ module.exports = function (redis, name) {
                             }
                         })
                     }else{
-                        reject(new Error(`missing name field`))
+                        reject(new Error(`missing id or name field`))
                     }
 
                 })

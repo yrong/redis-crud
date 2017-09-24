@@ -17,7 +17,7 @@ try{
     }
 }
 const client = Redis.createClient(redis_config)
-client.select(1, function() {console.log('select redis database 1')})
+client.select(1, function() {})
 
 const Model = require('./model')
 const model = (name) => Model(client,name)
