@@ -1,13 +1,9 @@
 {
   "name": "redis-crud-fork",
-  "version": "1.0.0-beta.7",
+  "version": "1.0.0-beta.8",
   "main": "index.js",
   "author": "Ronyang <yrong1997@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "lodash": "^4.17.4",
-    "bluebird": "^3.5.0",
-    "config": "^1.24.0",
-    "redis": "^2.7.1"
   }
 }
