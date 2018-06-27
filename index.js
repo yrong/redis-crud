@@ -11,7 +11,6 @@ module.exports = function (redis, name) {
 
     return {
         insert(obj) {
-            // run the beforeInsert hook
             let before;
             try {
                 before = this.beforeInsert && this.beforeInsert(obj);
@@ -25,19 +24,42 @@ module.exports = function (redis, name) {
                     if(id){
                         redis.set(KEY(id), JSON.stringify(obj),(err,res)=>{
                             if (res) {
-                                // Run the afterInsert hook
                                 const after = this.afterInsert && this.afterInsert(obj, id);
                                 return Promise.resolve(after).then(() => {
                                     resolve(id);
                                 });
-                            } else {
-                                reject(new Error(`Could not create object for ${name}. ${id} already exist`))
                             }
                         })
                     }else{
                         reject(new Error(`missing id or name field`))
                     }
+                })
+            });
+        },
 
+        insertEX(obj) {
+            let before;
+            try {
+                before = this.beforeInsert && this.beforeInsert(obj);
+            } catch (e) {
+                return Promise.reject(e);
+            }
+
+            return Promise.resolve(before).then(() => {
+                return new Promise((resolve, reject) => {
+                    let id = obj.id||obj.name,maxAge=obj.maxAge||1800
+                    if(id){
+                        redis.setex(KEY(id), maxAge,JSON.stringify(obj),(err,res)=>{
+                            if (res) {
+                                const after = this.afterInsert && this.afterInsert(obj, id);
+                                return Promise.resolve(after).then(() => {
+                                    resolve(id);
+                                });
+                            }
+                        })
+                    }else{
+                        reject(new Error(`missing id or name field`))
+                    }
                 })
             });
         },
