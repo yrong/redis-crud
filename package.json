@@ -1,6 +1,6 @@
 {
   "name": "redis-crud-fork",
-  "version": "1.0.2",
+  "version": "1.0.2-beta.1",
   "main": "index.js",
   "author": "Ronyang <yrong1997@gmail.com>",
   "license": "MIT",
