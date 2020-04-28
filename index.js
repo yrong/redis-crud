@@ -110,7 +110,7 @@ module.exports = function (redis, name) {
                     if(res)
                         resolve(JSON.parse(res))
                     else
-                        reject(`key ${id} does not exist`)
+                        resolve()
                 })
             })
         },
