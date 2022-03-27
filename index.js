@@ -76,7 +76,7 @@ module.exports = function (redis, name) {
         get: async(id)=> {
             const key = KEY(id)
             let result = await redis.get(key)
-            return result
+            return result&&JSON.parse(result)
         },
 
         delete:async(id)=> {
