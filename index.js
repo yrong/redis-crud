@@ -9,75 +9,34 @@ module.exports = function (redis, name) {
         return NAME + ':' + key;
     };
 
-    const beforeInsert = ()=>{};
-
-    const afterInsert = ()=>{};
-
     const insert = async (obj)=>{
-        let before;
-        try {
-            before = beforeInsert && beforeInsert(obj);
-        } catch (e) {
-            return Promise.reject(e);
+        let id = obj.id||obj.name,age = obj.maxAge
+        if(id) {
+            if (age) {
+                await redis.sendCommand(['SETEX',KEY(id), age, JSON.stringify(obj)])
+            } else {
+                await redis.set(KEY(id), JSON.stringify(obj))
+            }
+        }else{
+            throw Error('missing id field')
         }
-
-        return Promise.resolve(before).then(() => {
-            return new Promise((resolve, reject) => {
-                let id = obj.id||obj.name,age = obj.maxAge
-                if(id){
-                    if(age){
-                        redis.setex(KEY(id), age, JSON.stringify(obj),(err,res)=>{
-                            if (res) {
-                                const after = afterInsert && afterInsert(obj, id);
-                                return Promise.resolve(after).then(() => {
-                                    resolve(id);
-                                });
-                            }
-                        })
-                    }else{
-                        redis.set(KEY(id), JSON.stringify(obj),(err,res)=>{
-                            if (res) {
-                                const after = afterInsert && afterInsert(obj, id);
-                                return Promise.resolve(after).then(() => {
-                                    resolve(id);
-                                });
-                            }
-                        })
-                    }
-                }else{
-                    reject(new Error(`missing id or name field`))
-                }
-            })
-        });
     }
 
     const insertEX = async (obj)=>{
-        obj.maxAge = obj.maxAge||1800
+        obj.maxAge = obj.maxAge||1
         return insert(obj)
     }
 
     const findByPattern = async function(pattern){
-        return new Promise((resolve, reject) => {
-            let results = [],promises = []
-            redis.keys(KEY(pattern),(err,keys)=>{
-                if(err)
-                    reject(err)
-                let findByKey = (key)=> {
-                    return new Promise((resolve, reject) => {
-                        redis.get(key, (err, res) => {
-                            if (err)
-                                reject(err)
-                            if (res)
-                                resolve(JSON.parse(res))
-                        })
-                    })
-                }
-                for(let key of keys){
-                    promises.push(findByKey(key))
-                }
-                Promise.all(promises).then(resolve).catch(reject)
-            });
-        })
+        let results = [];
+        let keys = await redis.keys(KEY(pattern));
+        for(let key of keys){
+            let res = await redis.get(key)
+            if(res){
+                results.push(JSON.parse(res))
+            }
+        }
+        return results;
     }
 
     const findAll = async()=>{
@@ -85,68 +44,52 @@ module.exports = function (redis, name) {
     }
 
     return {
-        beforeInsert,
-        afterInsert,
         insert,
         insertEX,
         findByPattern,
         findAll,
 
-        deleteAll:function(){
-            return new Promise((resolve, reject) => {
-                redis.eval("return redis.call('del', 'default-template',unpack(redis.call('keys', ARGV[1])))", 0, KEY('*'), (err, res) => {
-                    if(err)
-                        reject(err)
-                    else
-                        resolve(res)
-                })
-            })
+        deleteAll: async() => {
+            let pattern = KEY('*');
+            const deleteKeysScript = `
+                local keys = {};
+                local done = false;
+                local cursor = "0";
+                local deleted = 0;
+                redis.replicate_commands();
+                repeat
+                    local result = redis.call("SCAN", cursor, "match", ARGV[1], "count", ARGV[2])
+                    cursor = result[1];
+                    keys = result[2];
+                    for i, key in ipairs(keys) do
+                        deleted = deleted + redis.call("UNLINK", key);
+                    end
+                    if cursor == "0" then
+                        done = true;
+                    end
+                until done
+                return deleted;`
+            let result = await redis.sendCommand(['EVAL', deleteKeysScript, 0, pattern, 1000])
+            return result
         },
 
-        get(id) {
+        get: async(id)=> {
+            const key = KEY(id)
+            let result = await redis.get(key)
+            return result
+        },
+
+        delete:async(id)=> {
+            const key = KEY(id)
+            await redis.del(key)
+        },
+
+        update: async(id, obj)=> {
             const key = KEY(id);
-            return new Promise((resolve, reject) => {
-                redis.get(key,(err,res)=>{
-                    if(res)
-                        resolve(JSON.parse(res))
-                    else
-                        resolve()
-                })
-            })
-        },
-
-        getId(obj) {
-            return obj[ID];
-        },
-
-        delete(id) {
-            const key = KEY(id);
-            return new Promise((resolve, reject) => {
-                redis.get(key,(err,res)=>{
-                    if(res){
-                        Promise.resolve(this.beforeDelete && this.beforeDelete(id, obj)).then(() => {
-                            redis.del(key,(err,res)=>resolve(res))
-                        })
-                    }else{
-                        reject(`key ${id} does not exist`)
-                    }
-                })
-            })
-        },
-
-        update(id, obj) {
-            const key = KEY(id);
-            return new Promise((resolve, reject) => {
-                redis.get(key,(err,res)=>{
-                    if(res){
-                        Promise.resolve(this.beforeUpdate && this.beforeUpdate(id, obj)).then(() => {
-                            redis.set(KEY(id),JSON.stringify(obj),(err,res)=>resolve({res}))
-                        })
-                    }else{
-                        reject(`key ${id} does not exist`)
-                    }
-                })
-            })
+            let result = await redis.get(key);
+            if(result){
+                await redis.set(key,JSON.stringify(obj))
+            }
         },
     };
 };

@@ -1,16 +1,16 @@
 {
   "name": "redis-crud-fork",
-  "version": "1.0.2-beta.2",
+  "version": "1.0.3",
   "main": "index.js",
   "author": "Ronyang <yrong1997@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "test": "mocha test.js --reporter spec"
+    "test": "mocha test.js --reporter spec --timeout 3000"
   },
   "dependencies": {},
   "devDependencies": {
-    "mocha": "^3.4.1",
-    "redis": "^2.8.0",
+    "mocha": "^6.2.3",
+    "redis": "^4.0.4",
     "should": "^13.1.3"
   }
 }
